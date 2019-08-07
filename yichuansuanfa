@@ -1,0 +1,91 @@
+from __future__ import division
+import numpy as np
+import matplotlib.pyplot as plt
+#% matplotlib inline
+
+def f(x):
+    return -3 * (x - 30) ** 2 * np.sin(x)
+
+
+class GeneticAlgorithm(object):
+
+    def __init__(self, cross_rate, mutation_rate, n_population, n_iterations, DNA_size):
+        self.cross_rate = cross_rate
+        self.mutate_rate = mutation_rate
+        self.n_population = n_population
+        self.n_iterations = n_iterations
+        self.DNA_size = 8
+        self.x_bounder = [0, 15]
+
+    def init_population(self):
+        population = np.random.randint(low=0, high=2, size=(self.n_population, self.DNA_size)).astype(np.int8)
+        return population
+
+    def transformDNA(self, population):
+        population_decimal = (
+                    (population.dot(np.power(2, np.arange(self.DNA_size)[::-1])) / np.power(2, self.DNA_size) - 0.5) *
+                    (self.x_bounder[1] - self.x_bounder[0]) + 0.5 * (self.x_bounder[0] + self.x_bounder[1]))
+        return population_decimal
+
+    def fitness(self, population):
+        transform_population = self.transformDNA(population)
+        fitness_score = f(transform_population)
+        return fitness_score - fitness_score.min()
+
+    def select(self, population, fitness_score):
+        fitness_score = fitness_score + 1e-4
+        idx = np.random.choice(np.arange(self.n_population), size=self.n_population, replace=True,
+                               p=fitness_score / fitness_score.sum())
+        return population[idx]
+
+    def create_child(self, parent, pop):
+        if np.random.rand() < self.cross_rate:
+            index = np.random.randint(0, self.n_population, size=1)
+            cross_points = np.random.randint(0, 2, self.DNA_size).astype(np.bool)
+            parent[cross_points] = pop[index, cross_points]
+        return parent
+
+    def mutate_child(self, child):
+        for i in range(self.DNA_size):
+            if np.random.rand() < self.mutate_rate:
+                child[i] = 1
+            else:
+                child[i] = 0
+        return child
+
+    def evolution(self):
+        population = self.init_population()
+        for i in range(self.n_iterations):
+            fitness_score = self.fitness(population)
+            best_person = population[np.argmax(fitness_score)]
+
+            if i % 100 == 0:
+                print(u'第%-4d次进化后, 基因(fitness_score)最好的个体是: %s, 其适应度(找到的函数最大值)是: %f' % (i, best_person,
+                                                                                        f(self.transformDNA(
+                                                                                            best_person))))
+
+            population = self.select(population, fitness_score)
+            population_copy = population.copy()
+
+            for parent in population:
+                child = self.create_child(parent, population_copy)
+                child = self.mutate_child(child)
+                parent[:] = child
+
+            population = population
+
+        self.best_person = best_person
+
+
+def main():
+    ga = GeneticAlgorithm(cross_rate=0.9, mutation_rate=0.1, n_population=300, n_iterations=2000, DNA_size=8)
+    ga.evolution()
+
+    x = np.linspace(start=ga.x_bounder[0], stop=ga.x_bounder[1], num=200)
+    plt.plot(x, f(x))
+    plt.scatter(ga.transformDNA(ga.best_person), f(ga.transformDNA(ga.best_person)), s=200, lw=0, c='red', alpha=0.5)
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
