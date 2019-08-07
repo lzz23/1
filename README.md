@@ -1,2 +1,1 @@
-# 1
-no
+直接将yichuansuanfa的代码粘贴上即可
